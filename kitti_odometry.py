@@ -709,14 +709,11 @@ class KittiEvalOdom:
                 - 7dof: optimize 7dof for alignment and evaluation
                 - 6dof: optimize 6dof for alignment and evaluation
             seqs (list/None):
-                - None: Do not evaluate any sequence
+                - None: Evalute all available seqs in result_dir
                 - list: list of sequence indexs to be evaluated
         """
         if methods is None:
             print("No method to evaluate")
-            return
-        if seqs is None:
-            print("No sequence to evaluate")
             return
 
         self.gt_dir = gt_dir
@@ -741,7 +738,10 @@ class KittiEvalOdom:
 
         # Create evaluation list
         seq_list = ["{:02}".format(i) for i in range(0, 11)]
-        self.eval_seqs = [seq_list[seq] for seq in seqs]
+        if seqs is None:
+            self.eval_seqs = seq_list
+        else:
+            self.eval_seqs = [seq_list[seq] for seq in seqs]
 
         # evaluation
         for seq in self.eval_seqs:
