@@ -16,7 +16,7 @@ def scale_lse_solver(X, Y):
     Returns:
         scale (float): scaling factor
     """
-    scale = np.sum(X * Y)/np.sum(X ** 2)
+    scale = np.sum(X * Y) / np.sum(X**2)
     return scale
 
 
@@ -43,7 +43,7 @@ def umeyama_alignment(x, y, with_scale=False):
 
     # variance, eq. 36
     # "transpose" for column subtraction
-    sigma_x = 1.0 / n * (np.linalg.norm(x - mean_x[:, np.newaxis])**2)
+    sigma_x = 1.0 / n * (np.linalg.norm(x - mean_x[:, np.newaxis]) ** 2)
 
     # covariance matrix, eq. 38
     outer_sum = np.zeros((m, m))
@@ -70,12 +70,13 @@ def umeyama_alignment(x, y, with_scale=False):
     return r, t, c
 
 
-class KittiEvalOdom():
+class KittiEvalOdom:
     """Evaluate odometry result
     Usage example:
         vo_eval = KittiEvalOdom()
         vo_eval.eval(gt_pose_txt_dir, result_pose_txt_dir)
     """
+
     def __init__(self):
         self.lengths = [100, 200, 300, 400, 500, 600, 700, 800]
         self.num_lengths = len(self.lengths)
@@ -91,17 +92,17 @@ class KittiEvalOdom():
         Returns:
             poses (dict): {idx: 4x4 array}
         """
-        f = open(file_name, 'r')
+        f = open(file_name, "r")
         s = f.readlines()
         f.close()
         poses = {}
         for cnt, line in enumerate(s):
             P = np.eye(4)
-            line_split = [float(i) for i in line.split(" ") if i!=""]
+            line_split = [float(i) for i in line.split(" ") if i != ""]
             withIdx = len(line_split) == 13
             for row in range(3):
                 for col in range(4):
-                    P[row, col] = line_split[row*4 + col + withIdx]
+                    P[row, col] = line_split[row * 4 + col + withIdx]
             if withIdx:
                 frame_idx = line_split[0]
             else:
@@ -118,15 +119,15 @@ class KittiEvalOdom():
         """
         dist = [0]
         sort_frame_idx = sorted(poses.keys())
-        for i in range(len(sort_frame_idx)-1):
+        for i in range(len(sort_frame_idx) - 1):
             cur_frame_idx = sort_frame_idx[i]
-            next_frame_idx = sort_frame_idx[i+1]
+            next_frame_idx = sort_frame_idx[i + 1]
             P1 = poses[cur_frame_idx]
             P2 = poses[next_frame_idx]
             dx = P1[0, 3] - P2[0, 3]
             dy = P1[1, 3] - P2[1, 3]
             dz = P1[2, 3] - P2[2, 3]
-            dist.append(dist[i]+np.sqrt(dx**2+dy**2+dz**2))
+            dist.append(dist[i] + np.sqrt(dx**2 + dy**2 + dz**2))
         return dist
 
     def rotation_error(self, pose_error):
@@ -139,7 +140,7 @@ class KittiEvalOdom():
         a = pose_error[0, 0]
         b = pose_error[1, 1]
         c = pose_error[2, 2]
-        d = 0.5*(a+b+c-1.0)
+        d = 0.5 * (a + b + c - 1.0)
         rot_error = np.arccos(max(min(d, 1.0), -1.0))
         return rot_error
 
@@ -153,7 +154,7 @@ class KittiEvalOdom():
         dx = pose_error[0, 3]
         dy = pose_error[1, 3]
         dz = pose_error[2, 3]
-        trans_error = np.sqrt(dx**2+dy**2+dz**2)
+        trans_error = np.sqrt(dx**2 + dy**2 + dz**2)
         return trans_error
 
     def last_frame_from_segment_length(self, dist, first_frame, length):
@@ -192,49 +193,46 @@ class KittiEvalOdom():
             for i in range(self.num_lengths):
                 len_ = self.lengths[i]
                 last_frame = self.last_frame_from_segment_length(
-                                        dist, first_frame, len_
-                                        )
+                    dist, first_frame, len_
+                )
 
                 # Continue if sequence not long enough
-                if last_frame == -1 or \
-                        not(last_frame in poses_result.keys()) or \
-                        not(first_frame in poses_result.keys()):
+                if (
+                    last_frame == -1
+                    or not (last_frame in poses_result.keys())
+                    or not (first_frame in poses_result.keys())
+                ):
                     continue
 
                 # compute rotational and translational errors
                 pose_delta_gt = np.dot(
-                                    np.linalg.inv(poses_gt[first_frame]),
-                                    poses_gt[last_frame]
-                                    )
+                    np.linalg.inv(poses_gt[first_frame]), poses_gt[last_frame]
+                )
                 pose_delta_result = np.dot(
-                                        np.linalg.inv(poses_result[first_frame]),
-                                        poses_result[last_frame]
-                                        )
-                pose_error = np.dot(
-                                np.linalg.inv(pose_delta_result),
-                                pose_delta_gt
-                                )
+                    np.linalg.inv(poses_result[first_frame]), poses_result[last_frame]
+                )
+                pose_error = np.dot(np.linalg.inv(pose_delta_result), pose_delta_gt)
 
                 r_err = self.rotation_error(pose_error)
                 t_err = self.translation_error(pose_error)
 
                 # compute speed
                 num_frames = last_frame - first_frame + 1.0
-                speed = len_/(0.1*num_frames)
+                speed = len_ / (0.1 * num_frames)
 
-                err.append([first_frame, r_err/len_, t_err/len_, len_, speed])
+                err.append([first_frame, r_err / len_, t_err / len_, len_, speed])
         return err
-        
+
     def save_sequence_errors(self, err, file_name):
         """Save sequence error
         Args:
             err (list list): error information
             file_name (str): txt file for writing errors
         """
-        fp = open(file_name, 'w')
+        fp = open(file_name, "w")
         for i in err:
             line_to_write = " ".join([str(j) for j in i])
-            fp.writelines(line_to_write+"\n")
+            fp.writelines(line_to_write + "\n")
         fp.close()
 
     def compute_overall_err(self, seq_err):
@@ -278,7 +276,7 @@ class KittiEvalOdom():
 
         fig = plt.figure()
         ax = plt.gca()
-        ax.set_aspect('equal')
+        ax.set_aspect("equal")
 
         for key in plot_keys:
             pos_xz = []
@@ -286,19 +284,58 @@ class KittiEvalOdom():
             for frame_idx in frame_idx_list:
                 # pose = np.linalg.inv(poses_dict[key][frame_idx_list[0]]) @ poses_dict[key][frame_idx]
                 pose = poses_dict[key][frame_idx]
-                pos_xz.append([pose[0, 3],  pose[2, 3]])
+                pos_xz.append([pose[0, 3], pose[2, 3]])
             pos_xz = np.asarray(pos_xz)
-            plt.plot(pos_xz[:, 0],  pos_xz[:, 1], label=key)
+            plt.plot(pos_xz[:, 0], pos_xz[:, 1], label=key)
 
-        plt.legend(loc="upper right", prop={'size': fontsize_})
+        plt.legend(loc="upper right", prop={"size": fontsize_})
         plt.xticks(fontsize=fontsize_)
         plt.yticks(fontsize=fontsize_)
-        plt.xlabel('x (m)', fontsize=fontsize_)
-        plt.ylabel('z (m)', fontsize=fontsize_)
+        plt.xlabel("x (m)", fontsize=fontsize_)
+        plt.ylabel("z (m)", fontsize=fontsize_)
         fig.set_size_inches(10, 10)
         png_title = "sequence_{:02}".format(seq)
         fig_pdf = self.plot_path_dir + "/" + png_title + ".pdf"
-        plt.savefig(fig_pdf, bbox_inches='tight', pad_inches=0)
+        plt.savefig(fig_pdf, bbox_inches="tight", pad_inches=0)
+        plt.close(fig)
+
+    def plot_multi_trajectory(self, poses_gt, methods, seq):
+        """Plot trajectory for both GT and multiple predictions
+        Args:
+            poses_gt (dict): {idx: 4x4 array}; ground truth poses
+            methods (dict): {method: {poses_result}}; multiple predicted poses
+            seq (int): sequence index.
+        """
+        plot_keys = ["Ground Truth", *[method.upper() for method in methods.keys()]]
+        fontsize_ = 20
+
+        poses_dict = {}
+        poses_dict["Ground Truth"] = poses_gt
+        for key in methods.keys():
+            poses_dict[key.upper()] = methods[key]["poses_result"]
+        fig = plt.figure()
+        ax = plt.gca()
+        ax.set_aspect("equal")
+
+        for key in plot_keys:
+            pos_xz = []
+            frame_idx_list = sorted(poses_dict["Ground Truth"].keys())
+            for frame_idx in frame_idx_list:
+                # pose = np.linalg.inv(poses_dict[key][frame_idx_list[0]]) @ poses_dict[key][frame_idx]
+                pose = poses_dict[key][frame_idx]
+                pos_xz.append([pose[0, 3], pose[2, 3]])
+            pos_xz = np.asarray(pos_xz)
+            plt.plot(pos_xz[:, 0], pos_xz[:, 1], label=key)
+
+        plt.legend(loc="upper right", prop={"size": fontsize_})
+        plt.xticks(fontsize=fontsize_)
+        plt.yticks(fontsize=fontsize_)
+        plt.xlabel("x (m)", fontsize=fontsize_)
+        plt.ylabel("z (m)", fontsize=fontsize_)
+        fig.set_size_inches(10, 10)
+        png_title = f"sequence_{seq}"
+        fig_pdf = self.plot_path_dir + "/" + png_title + ".pdf"
+        plt.savefig(fig_pdf, bbox_inches="tight", pad_inches=0)
         plt.close(fig)
 
     def plot_error(self, avg_segment_errs, seq):
@@ -319,12 +356,12 @@ class KittiEvalOdom():
         fontsize_ = 10
         fig = plt.figure()
         plt.plot(plot_x, plot_y, "bs-", label="Translation Error")
-        plt.ylabel('Translation Error (%)', fontsize=fontsize_)
-        plt.xlabel('Path Length (m)', fontsize=fontsize_)
-        plt.legend(loc="upper right", prop={'size': fontsize_})
+        plt.ylabel("Translation Error (%)", fontsize=fontsize_)
+        plt.xlabel("Path Length (m)", fontsize=fontsize_)
+        plt.legend(loc="upper right", prop={"size": fontsize_})
         fig.set_size_inches(5, 5)
         fig_pdf = self.plot_error_dir + "/trans_err_{:02}.pdf".format(seq)
-        plt.savefig(fig_pdf, bbox_inches='tight', pad_inches=0)
+        plt.savefig(fig_pdf, bbox_inches="tight", pad_inches=0)
         plt.close(fig)
 
         # Rotation error
@@ -339,12 +376,12 @@ class KittiEvalOdom():
         fontsize_ = 10
         fig = plt.figure()
         plt.plot(plot_x, plot_y, "bs-", label="Rotation Error")
-        plt.ylabel('Rotation Error (deg/100m)', fontsize=fontsize_)
-        plt.xlabel('Path Length (m)', fontsize=fontsize_)
-        plt.legend(loc="upper right", prop={'size': fontsize_})
+        plt.ylabel("Rotation Error (deg/100m)", fontsize=fontsize_)
+        plt.xlabel("Path Length (m)", fontsize=fontsize_)
+        plt.legend(loc="upper right", prop={"size": fontsize_})
         fig.set_size_inches(5, 5)
         fig_pdf = self.plot_error_dir + "/rot_err_{:02}.pdf".format(seq)
-        plt.savefig(fig_pdf, bbox_inches='tight', pad_inches=0)
+        plt.savefig(fig_pdf, bbox_inches="tight", pad_inches=0)
         plt.close(fig)
 
     def compute_segment_error(self, seq_errs):
@@ -357,7 +394,7 @@ class KittiEvalOdom():
                 - length: evaluation trajectory length
                 - speed: car speed (#FIXME: 10FPS is assumed)
         Returns:
-            avg_segment_errs (dict): {100:[avg_t_err, avg_r_err],...}    
+            avg_segment_errs (dict): {100:[avg_t_err, avg_r_err],...}
         """
 
         segment_errs = {}
@@ -396,7 +433,7 @@ class KittiEvalOdom():
         for i in pred:
             # cur_gt = np.linalg.inv(gt_0) @ gt[i]
             cur_gt = gt[i]
-            gt_xyz = cur_gt[:3, 3] 
+            gt_xyz = cur_gt[:3, 3]
 
             # cur_pred = np.linalg.inv(pred_0) @ pred[i]
             cur_pred = pred[i]
@@ -408,10 +445,10 @@ class KittiEvalOdom():
             # print("gt: ", gt_xyz)
             # print("pred: ", pred_xyz)
             # input("debug")
-            errors.append(np.sqrt(np.sum(align_err ** 2)))
-        ate = np.sqrt(np.mean(np.asarray(errors) ** 2)) 
+            errors.append(np.sqrt(np.sum(align_err**2)))
+        ate = np.sqrt(np.mean(np.asarray(errors) ** 2))
         return ate
-    
+
     def compute_RPE(self, gt, pred):
         """Compute RPE
         Args:
@@ -425,14 +462,14 @@ class KittiEvalOdom():
         rot_errors = []
         for i in list(pred.keys())[:-1]:
             gt1 = gt[i]
-            gt2 = gt[i+1]
+            gt2 = gt[i + 1]
             gt_rel = np.linalg.inv(gt1) @ gt2
 
             pred1 = pred[i]
-            pred2 = pred[i+1]
+            pred2 = pred[i + 1]
             pred_rel = np.linalg.inv(pred1) @ pred2
             rel_err = np.linalg.inv(gt_rel) @ pred_rel
-            
+
             trans_errors.append(self.translation_error(rel_err))
             rot_errors.append(self.rotation_error(rel_err))
         # rpe_trans = np.sqrt(np.mean(np.asarray(trans_errors) ** 2))
@@ -442,7 +479,7 @@ class KittiEvalOdom():
         return rpe_trans, rpe_rot
 
     def scale_optimization(self, gt, pred):
-        """ Optimize scaling factor
+        """Optimize scaling factor
         Args:
             gt (4x4 array dict): ground-truth poses
             pred (4x4 array dict): predicted poses
@@ -463,7 +500,7 @@ class KittiEvalOdom():
         for i in pred_updated:
             pred_updated[i][:3, 3] *= scale
         return pred_updated
-    
+
     def write_result(self, f, seq, errs):
         """Write result into a txt file
         Args:
@@ -473,19 +510,46 @@ class KittiEvalOdom():
         """
         ave_t_err, ave_r_err, ate, rpe_trans, rpe_rot = errs
         lines = []
-        lines.append("Sequence: \t {} \n".format(seq) )
-        lines.append("Trans. err. (%): \t {:.3f} \n".format(ave_t_err*100))
-        lines.append("Rot. err. (deg/100m): \t {:.3f} \n".format(ave_r_err/np.pi*180*100))
+        lines.append("Sequence: \t {} \n".format(seq))
+        lines.append("Trans. err. (%): \t {:.3f} \n".format(ave_t_err * 100))
+        lines.append(
+            "Rot. err. (deg/100m): \t {:.3f} \n".format(ave_r_err / np.pi * 180 * 100)
+        )
         lines.append("ATE (m): \t {:.3f} \n".format(ate))
         lines.append("RPE (m): \t {:.3f} \n".format(rpe_trans))
-        lines.append("RPE (deg): \t {:.3f} \n\n".format(rpe_rot * 180 /np.pi))
+        lines.append("RPE (deg): \t {:.3f} \n\n".format(rpe_rot * 180 / np.pi))
         for line in lines:
             f.writelines(line)
 
+    def write_multi_result(self, f, seq, methods):
+        """Write result into a txt file
+        Args:
+            f (IOWrapper)
+            seq (int): sequence number
+            methods (dict): {method: {errs}}
+        """
+        lines = []
+        lines.append("Sequence: {}\n".format(seq))
+        for method in methods.keys():
+            errs = methods[method]
+            lines.append("\n\tMethod: {}\n".format(method))
+            lines.append(
+                "\t\tTrans. err. (%): {:.3f}\n".format(errs["ave_t_err"] * 100)
+            )
+            lines.append(
+                "\t\tRot. err. (deg/100m): {:.3f}\n".format(
+                    errs["ave_r_err"] / np.pi * 180 * 100
+                )
+            )
+            lines.append("\t\tATE (m): {:.3f}\n".format(errs["ate"]))
+            lines.append("\t\tRPE (m): {:.3f}\n".format(errs["rpe_trans"]))
+            lines.append(
+                "\t\tRPE (deg): {:.3f}\n".format(errs["rpe_rot"] * 180 / np.pi)
+            )
+        for line in lines:
+            f.writelines(line)
 
-    def eval(self, gt_dir, result_dir, 
-                alignment=None,
-                seqs=None):
+    def eval(self, gt_dir, result_dir, alignment=None, seqs=None):
         """Evaulate required/available sequences
         Args:
             gt_dir (str): ground truth poses txt files directory
@@ -514,7 +578,7 @@ class KittiEvalOdom():
         self.plot_path_dir = result_dir + "/plot_path"
         self.plot_error_dir = result_dir + "/plot_error"
         result_txt = os.path.join(result_dir, "result.txt")
-        f = open(result_txt, 'w')
+        f = open(result_txt, "w")
 
         if not os.path.exists(error_dir):
             os.makedirs(error_dir)
@@ -526,7 +590,9 @@ class KittiEvalOdom():
         # Create evaluation list
         if seqs is None:
             available_seqs = sorted(glob(os.path.join(result_dir, "*.txt")))
-            self.eval_seqs = [int(i[-6:-4]) for i in available_seqs if i[-6:-4] in seq_list]
+            self.eval_seqs = [
+                int(i[-6:-4]) for i in available_seqs if i[-6:-4] in seq_list
+            ]
         else:
             self.eval_seqs = seqs
 
@@ -534,12 +600,12 @@ class KittiEvalOdom():
         for i in self.eval_seqs:
             self.cur_seq = i
             # Read pose txt
-            self.cur_seq = '{:02}'.format(i)
-            file_name = '{:02}.txt'.format(i)
+            self.cur_seq = "{:02}".format(i)
+            file_name = "{:02}.txt".format(i)
 
-            poses_result = self.load_poses_from_txt(result_dir+"/"+file_name)
+            poses_result = self.load_poses_from_txt(result_dir + "/" + file_name)
             poses_gt = self.load_poses_from_txt(self.gt_dir + "/" + file_name)
-            self.result_file_name = result_dir+file_name
+            self.result_file_name = result_dir + file_name
 
             # Pose alignment to first frame
             idx_0 = sorted(list(poses_result.keys()))[0]
@@ -551,25 +617,35 @@ class KittiEvalOdom():
 
             if alignment == "scale":
                 poses_result = self.scale_optimization(poses_gt, poses_result)
-            elif alignment == "scale_7dof" or alignment == "7dof" or alignment == "6dof":
+            elif (
+                alignment == "scale_7dof" or alignment == "7dof" or alignment == "6dof"
+            ):
                 # get XYZ
                 xyz_gt = []
                 xyz_result = []
                 for cnt in poses_result:
-                    xyz_gt.append([poses_gt[cnt][0, 3], poses_gt[cnt][1, 3], poses_gt[cnt][2, 3]])
-                    xyz_result.append([poses_result[cnt][0, 3], poses_result[cnt][1, 3], poses_result[cnt][2, 3]])
+                    xyz_gt.append(
+                        [poses_gt[cnt][0, 3], poses_gt[cnt][1, 3], poses_gt[cnt][2, 3]]
+                    )
+                    xyz_result.append(
+                        [
+                            poses_result[cnt][0, 3],
+                            poses_result[cnt][1, 3],
+                            poses_result[cnt][2, 3],
+                        ]
+                    )
                 xyz_gt = np.asarray(xyz_gt).transpose(1, 0)
                 xyz_result = np.asarray(xyz_result).transpose(1, 0)
 
-                r, t, scale = umeyama_alignment(xyz_result, xyz_gt, alignment!="6dof")
+                r, t, scale = umeyama_alignment(xyz_result, xyz_gt, alignment != "6dof")
 
                 align_transformation = np.eye(4)
                 align_transformation[:3:, :3] = r
                 align_transformation[:3, 3] = t
-                
+
                 for cnt in poses_result:
                     poses_result[cnt][:3, 3] *= scale
-                    if alignment=="7dof" or alignment=="6dof":
+                    if alignment == "7dof" or alignment == "6dof":
                         poses_result[cnt] = align_transformation @ poses_result[cnt]
 
             # compute sequence errors
@@ -582,8 +658,8 @@ class KittiEvalOdom():
             # compute overall error
             ave_t_err, ave_r_err = self.compute_overall_err(seq_err)
             print("Sequence: " + str(i))
-            print("Translational error (%): ", ave_t_err*100)
-            print("Rotational error (deg/100m): ", ave_r_err/np.pi*180*100)
+            print("Translational error (%): ", ave_t_err * 100)
+            print("Rotational error (deg/100m): ", ave_r_err / np.pi * 180 * 100)
             ave_t_errs.append(ave_t_err)
             ave_r_errs.append(ave_r_err)
 
@@ -597,7 +673,7 @@ class KittiEvalOdom():
             seq_rpe_trans.append(rpe_trans)
             seq_rpe_rot.append(rpe_rot)
             print("RPE (m): ", rpe_trans)
-            print("RPE (deg): ", rpe_rot * 180 /np.pi)
+            print("RPE (deg): ", rpe_rot * 180 / np.pi)
 
             # Plotting
             self.plot_trajectory(poses_gt, poses_result, i)
@@ -605,13 +681,185 @@ class KittiEvalOdom():
 
             # Save result summary
             self.write_result(f, i, [ave_t_err, ave_r_err, ate, rpe_trans, rpe_rot])
-            
-        f.close()    
+
+        f.close()
 
         print("-------------------- For Copying ------------------------------")
         for i in range(len(ave_t_errs)):
-            print("{0:.2f}".format(ave_t_errs[i]*100))
-            print("{0:.2f}".format(ave_r_errs[i]/np.pi*180*100))
+            print("{0:.2f}".format(ave_t_errs[i] * 100))
+            print("{0:.2f}".format(ave_r_errs[i] / np.pi * 180 * 100))
             print("{0:.2f}".format(seq_ate[i]))
             print("{0:.3f}".format(seq_rpe_trans[i]))
             print("{0:.3f}".format(seq_rpe_rot[i] * 180 / np.pi))
+
+    def multi_eval(
+        self, gt_dir, result_dir, output_dir, methods, alignment=None, seqs=None
+    ):
+        """Evaulate required/available sequences on multiple methods
+        Args:
+            gt_dir (str): ground truth poses txt files directory
+            result_dir (str): pose predictions txt files directory
+            output_dir (str): output directory
+            methods (list/None): list of method names
+                - None: Do not evaluate any method
+                - list: list of method names to be evaluated
+            alignment (str): if not None, optimize poses by
+                - scale: optimize scale factor for trajectory alignment and evaluation
+                - scale_7dof: optimize 7dof for alignment and use scale for trajectory evaluation
+                - 7dof: optimize 7dof for alignment and evaluation
+                - 6dof: optimize 6dof for alignment and evaluation
+            seqs (list/None):
+                - None: Do not evaluate any sequence
+                - list: list of sequence indexs to be evaluated
+        """
+        if methods is None:
+            print("No method to evaluate")
+            return
+        if seqs is None:
+            print("No sequence to evaluate")
+            return
+
+        self.gt_dir = gt_dir
+
+        # Create output directory
+        output_dir = result_dir + output_dir
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        error_dir = output_dir + "/errors"
+        self.plot_path_dir = output_dir + "/plot_path"
+        self.plot_error_dir = output_dir + "/plot_error"
+        result_txt = os.path.join(output_dir, "result.txt")
+        f = open(result_txt, "w")
+
+        if not os.path.exists(error_dir):
+            os.makedirs(error_dir)
+        if not os.path.exists(self.plot_path_dir):
+            os.makedirs(self.plot_path_dir)
+        if not os.path.exists(self.plot_error_dir):
+            os.makedirs(self.plot_error_dir)
+
+        # Create evaluation list
+        seq_list = ["{:02}".format(i) for i in range(0, 11)]
+        self.eval_seqs = [seq_list[seq] for seq in seqs]
+
+        # evaluation
+        for seq in self.eval_seqs:
+            print("Sequence: " + seq + "\n")
+
+            # Clean methods
+            methods = {
+                method: {
+                    "ave_t_err": [],
+                    "ave_r_err": [],
+                    "ate": [],
+                    "rpe_trans": [],
+                    "rpe_rot": [],
+                    "poses_result": [],
+                }
+                for method in methods
+            }
+
+            # Read ground truth pose txt
+            file_name = seq + ".txt"
+            poses_gt = self.load_poses_from_txt(self.gt_dir + "/" + file_name)
+
+            # Pose alignment to first frame
+            idx_0 = sorted(list(poses_gt.keys()))[0]
+            gt_0 = poses_gt[idx_0]
+            for cnt in poses_gt:
+                poses_gt[cnt] = np.linalg.inv(gt_0) @ poses_gt[cnt]
+
+            for method in methods.keys():
+                print("\tMethod: " + method)
+
+                # Read predicted pose txt
+                method_dir = result_dir + method
+                poses_result = self.load_poses_from_txt(method_dir + "/" + file_name)
+
+                # Pose alignment to first frame
+                pred_0 = poses_result[idx_0]
+                for cnt in poses_result:
+                    poses_result[cnt] = np.linalg.inv(pred_0) @ poses_result[cnt]
+
+                if alignment == "scale":
+                    poses_result = self.scale_optimization(poses_gt, poses_result)
+                elif (
+                    alignment == "scale_7dof"
+                    or alignment == "7dof"
+                    or alignment == "6dof"
+                ):
+                    # get XYZ
+                    xyz_gt = []
+                    xyz_result = []
+                    for cnt in poses_result:
+                        xyz_gt.append(
+                            [
+                                poses_gt[cnt][0, 3],
+                                poses_gt[cnt][1, 3],
+                                poses_gt[cnt][2, 3],
+                            ]
+                        )
+                        xyz_result.append(
+                            [
+                                poses_result[cnt][0, 3],
+                                poses_result[cnt][1, 3],
+                                poses_result[cnt][2, 3],
+                            ]
+                        )
+                    xyz_gt = np.asarray(xyz_gt).transpose(1, 0)
+                    xyz_result = np.asarray(xyz_result).transpose(1, 0)
+
+                    r, t, scale = umeyama_alignment(
+                        xyz_result, xyz_gt, alignment != "6dof"
+                    )
+
+                    align_transformation = np.eye(4)
+                    align_transformation[:3:, :3] = r
+                    align_transformation[:3, 3] = t
+
+                    for cnt in poses_result:
+                        poses_result[cnt][:3, 3] *= scale
+                        if alignment == "7dof" or alignment == "6dof":
+                            poses_result[cnt] = align_transformation @ poses_result[cnt]
+
+                # compute sequence errors
+                seq_err = self.calc_sequence_errors(poses_gt, poses_result)
+                error_file_name = error_dir + "/" + method + "_" + file_name
+                self.save_sequence_errors(seq_err, error_file_name)
+
+                # Compute segment errors
+                avg_segment_errs = self.compute_segment_error(seq_err)
+
+                # compute overall error
+                ave_t_err, ave_r_err = self.compute_overall_err(seq_err)
+
+                print("\t\tTranslational error (%): ", ave_t_err * 100)
+                print(
+                    "\t\tRotational error (deg/100m): ", ave_r_err / np.pi * 180 * 100
+                )
+                methods[method]["ave_t_err"] = ave_t_err
+                methods[method]["ave_r_err"] = ave_r_err
+
+                # Compute ATE
+                ate = self.compute_ATE(poses_gt, poses_result)
+                methods[method]["ate"] = ate
+                print("\t\tATE (m): ", ate)
+
+                # Compute RPE
+                rpe_trans, rpe_rot = self.compute_RPE(poses_gt, poses_result)
+                methods[method]["rpe_trans"] = rpe_trans
+                methods[method]["rpe_rot"] = rpe_rot
+                print("\t\tRPE (m): ", rpe_trans)
+                print(f"\t\tRPE (deg): {rpe_rot * 180 / np.pi}\n")
+
+                methods[method]["poses_result"] = poses_result
+
+            # Plotting
+            self.plot_multi_trajectory(poses_gt, methods, seq)
+            # self.plot_error(avg_segment_errs, i)
+
+            # Save result summary
+            self.write_multi_result(f, seq, methods)
+
+        f.close()
