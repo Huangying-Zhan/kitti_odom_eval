@@ -39,19 +39,27 @@ T00 T01 T02 T03 T10 T11 T12 T13 T20 T21 T22 T23
 ```
 
 ## Usage
-To use the tool, there are some possible options.
+
+There are two possible options for using the tool.
+
+### Single evaluation
+
 The basic usage is 
 ```
-# RESULT_PATH contains the camera pose text file, 
-# which should be named as 00.txt, 01.txt, ...
+# RESULT_PATH:
+# - Contains the camera pose text file, 
+#    which should be named as 00.txt, 01.txt, ...
 
 # Example
 python eval_odom.py --result result/example_1/
-
 ```
 
 The full usage is
 ```
+# X:
+# - Is the sequence number
+# - If not given, all sequences in the folder will be evaluated
+
 python eval_odom.py --result RESULT_PATH --align ALIGNMENT_OPTION --seqs X X X
 
 # Examples
@@ -59,32 +67,52 @@ python eval_odom.py --result result/example_0 --align 7dof
 python eval_odom.py --result result/example_1 --align 6dof --seqs 9
 ```
 
-`X` is the sequence number. If `--seqs` is not given, all available sequences in the folder will be evaluated.
+**Note:** The detailed results will be saved in `RESULT_PATH`.
 
-The detailed results will be saved in `RESULT_PATH`
+
+### Multi-prediction evaluation
+
+For multi-prediction evaluation
+```
+# RESULT_PATH:
+# - Is the root path to all method predictions
+
+# PATH_X:
+# - Is the relative path of each method inside RESULT_PATH
+
+# X:
+# - Is the sequence number
+
+# OUT_PATH:
+# - Is the path inside RESULT_PATH where results will be saved
+
+python multi_eval_odom.py --result RESULT_PATH --methods PATH_X PATH_X --seqs X X X --output OUT_PATH
+```
+
+**Note:** Multi-prediction also supports the `ALIGNMENT_OPTION`.
 
 ## Alignment
-Following prior works, certain degrees of alignment can be done in this evaluation script. Pass one of the following argument `--align XXX` to the script, where `XXX` can be,
+Following prior works, certain degrees of alignment can be done in this evaluation script. Pass one of the following arguments `--align XXX` to the script, where `XXX` can be,
 * scale
 * scale_7dof
 * 6dof
 * 7dof
 
 ### scale
-Find a scaling factor that best align the predictions to the ground truth (GT) poses
+Find a scaling factor that best aligns the predictions to the ground truth (GT) poses
 
 ### scale_7dof
 Find a 6+1 DoF transformation, including translation, rotation, and scaling, that best align the predictions to the GT poses.
 After that, only the scaling factor is used to align the predictions to the GT for evaluation.
 
 ### 6dof
-Find a 6 DoF transformation, including translation and rotation that best align the predictions to GT poses.
+Find a 6 DoF transformation, including translation and rotation, that best aligns the predictions to GT poses.
 
 ### 7dof
 Find a 6+1 DoF transformation, including translation, rotation, and scaling, that best align the predictions to the GT poses.
 
 ## Evaluation result
-Here shows some evaluation result examples
+Here are some evaluation result examples
 <img src='misc/run_eg.jpeg' width=640 height=160>
 
 Trajectory comparison
